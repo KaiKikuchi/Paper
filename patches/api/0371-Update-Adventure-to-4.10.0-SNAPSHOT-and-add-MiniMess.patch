@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: KaiKikuchi <8842403+KaiKikuchi@users.noreply.github.com>
+Date: Wed, 22 Feb 2022 19:04:00 +0100
+Subject: [PATCH] Update Adventure to 4.10.0-SNAPSHOT and add MiniMessage
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 001c2b963205012f340db0d539e4033c748124ce..1aa2f3eeab0f150323e9e78436bfdd6fb1c405ee 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -8,7 +8,7 @@ java {
+     withJavadocJar()
+ }
+ 
+-val adventureVersion = "4.9.3"
++val adventureVersion = "4.10.0-SNAPSHOT"
+ val apiAndDocs: Configuration by configurations.creating {
+     attributes {
+         attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.DOCUMENTATION))
+@@ -38,6 +38,7 @@ dependencies {
+     apiAndDocs("net.kyori:adventure-text-serializer-gson")
+     apiAndDocs("net.kyori:adventure-text-serializer-legacy")
+     apiAndDocs("net.kyori:adventure-text-serializer-plain")
++    apiAndDocs("net.kyori:adventure-text-minimessage")
+     api("org.apache.logging.log4j:log4j-api:2.17.1")
+     api("org.slf4j:slf4j-api:1.8.0-beta4")
+ 
+@@ -112,6 +113,7 @@ tasks.withType<Javadoc> {
+         "https://jd.adventure.kyori.net/text-serializer-gson/$adventureVersion/",
+         "https://jd.adventure.kyori.net/text-serializer-legacy/$adventureVersion/",
+         "https://jd.adventure.kyori.net/text-serializer-plain/$adventureVersion/",
++        "https://jd.adventure.kyori.net/text-minimessage/$adventureVersion/",
+         // Paper end
+     )
+ }
