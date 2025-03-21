@@ -21,13 +21,14 @@
      private static final int MAX_TICKS_BEFORE_LOGIN = 600;
      private final byte[] challenge;
      final MinecraftServer server;
-@@ -59,6 +_,9 @@
+@@ -59,6 +_,10 @@
      public GameProfile authenticatedProfile;
      private final String serverId = "";
      private final boolean transferred;
 +    private net.minecraft.server.level.ServerPlayer player; // CraftBukkit
 +    public boolean iKnowThisMayNotBeTheBestIdeaButPleaseDisableUsernameValidation = false; // Paper - username validation overriding
 +    private int velocityLoginMessageId = -1; // Paper - Add Velocity IP Forwarding Support
++	private java.util.Map<String, java.util.concurrent.CompletableFuture<byte[]>> cookiesWaiting = java.util.Collections.synchronizedMap(new java.util.HashMap<>());
  
      public ServerLoginPacketListenerImpl(MinecraftServer server, Connection connection, boolean transferred) {
          this.server = server;
@@ -228,7 +229,7 @@
                  }
              }
  
-@@ -222,24 +_,120 @@
+@@ -222,24 +_,125 @@
                      ? ((InetSocketAddress)remoteAddress).getAddress()
                      : null;
              }
@@ -256,7 +257,12 @@
 +        // Paper start - Add more fields to AsyncPlayerPreLoginEvent
 +        final InetAddress rawAddress = ((InetSocketAddress) this.connection.channel.remoteAddress()).getAddress();
 +        com.destroystokyo.paper.profile.PlayerProfile profile = com.destroystokyo.paper.profile.CraftPlayerProfile.asBukkitMirror(gameprofile); // Paper - setPlayerProfileAPI
-+        AsyncPlayerPreLoginEvent asyncEvent = new AsyncPlayerPreLoginEvent(playerName, address, rawAddress, uniqueId, this.transferred, profile, this.connection.hostname);
++        AsyncPlayerPreLoginEvent asyncEvent = new AsyncPlayerPreLoginEvent(playerName, address, rawAddress, uniqueId, this.transferred, profile, this.connection.hostname, cookieKey -> {
++			java.util.concurrent.CompletableFuture<byte[]> future = new java.util.concurrent.CompletableFuture<>();
++			cookiesWaiting.put(cookieKey, future);
++			this.sendPacket(new net.minecraft.network.protocol.cookie.ClientboundCookieRequestPacket(net.minecraft.resources.ResourceLocation.parse(cookieKey)));
++			return future;
++		});
 +        server.getPluginManager().callEvent(asyncEvent);
 +        profile = asyncEvent.getPlayerProfile();
 +        profile.complete(true); // Paper - setPlayerProfileAPI
@@ -354,18 +360,25 @@
          this.connection.setupInboundProtocol(ConfigurationProtocols.SERVERBOUND, serverConfigurationPacketListenerImpl);
          serverConfigurationPacketListenerImpl.startConfiguration();
          this.state = ServerLoginPacketListenerImpl.State.ACCEPTED;
-@@ -252,8 +_,36 @@
+@@ -252,8 +_,41 @@
  
      @Override
      public void handleCookieResponse(ServerboundCookieResponsePacket packet) {
+-        this.disconnect(ServerCommonPacketListenerImpl.DISCONNECT_UNEXPECTED_QUERY);
+-    }
 +        // CraftBukkit start
 +        PacketUtils.ensureRunningOnSameThread(packet, this, this.server);
 +        if (this.player != null && this.player.getBukkitEntity().handleCookieResponse(packet)) {
 +            return;
 +        }
++		
++		java.util.concurrent.CompletableFuture<byte[]> future = cookiesWaiting.get(packet.key().toString());
++		if (future != null && !future.isDone()) {
++			future.complete(packet.payload());
++		}
 +        // CraftBukkit end
-         this.disconnect(ServerCommonPacketListenerImpl.DISCONNECT_UNEXPECTED_QUERY);
-     }
++        //this.disconnect(ServerCommonPacketListenerImpl.DISCONNECT_UNEXPECTED_QUERY);
++    }
 +
 +    // Spigot start
 +    protected GameProfile createOfflineProfile(String s) {
